@@ -46,6 +46,9 @@ import utils.c2 as c2_utils
 import utils.logging
 import utils.vis as vis_utils
 
+logger = logging.getLogger(__name__)
+
+
 c2_utils.import_detectron_ops()
 # OpenCL may be enabled by default in OpenCV3; disable it because it's not
 # thread safe and causes unwanted GPU memory allocations.
@@ -98,63 +101,60 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(args):
-    logger = logging.getLogger(__name__)
+def prepare_inference_engine(args):
     merge_cfg_from_file(args.cfg)
     cfg.NUM_GPUS = 1
     args.weights = cache_url(args.weights, cfg.DOWNLOAD_CACHE)
     assert_and_infer_cfg(cache_urls=False)
     model = infer_engine.initialize_model_from_cfg(args.weights)
     dummy_coco_dataset = dummy_datasets.get_coco_dataset()
+    return model, dummy_coco_dataset
 
-    if os.path.isdir(args.im_or_folder):
-        im_list = glob.iglob(args.im_or_folder + '/*.' + args.image_ext)
-    else:
-        im_list = [args.im_or_folder]
 
-    for i, im_name in enumerate(im_list):
-        outfile_name = os.path.splitext(im_name)[0]
-        out_name = os.path.join(
-            args.output_dir, '{}.{}'.format(os.path.basename(outfile_name), args.output_ext)
+def infer_bbox_for_image(image_path, output_dir, model, dataset=None, visualize=False):
+    outfile_name = os.path.splitext(image_path)[0]
+    out_name = os.path.join(
+        output_dir, '{}.{}'.format(os.path.basename(outfile_name), args.output_ext)
+    )
+    logger.info('Processing {} -> {}'.format(image_path, out_name))
+    im = cv2.imread(image_path)
+    timers = defaultdict(Timer)
+    t = time.time()
+    with c2_utils.NamedCudaScope(0):
+        cls_boxes, cls_segms, cls_keyps = infer_engine.im_detect_all(
+            model, im, None, timers=timers
         )
-        logger.info('Processing {} -> {}'.format(im_name, out_name))
-        im = cv2.imread(im_name)
-        timers = defaultdict(Timer)
-        t = time.time()
-        with c2_utils.NamedCudaScope(0):
-            cls_boxes, cls_segms, cls_keyps = infer_engine.im_detect_all(
-                model, im, None, timers=timers
-            )
-        logger.info('Inference time: {:.3f}s'.format(time.time() - t))
-        # for k, v in timers.items():
-        #     logger.info(' | {}: {:.3f}s'.format(k, v.average_time))
-        logger.info(' | bbox detection time: {:.3f}s'.format(timers['im_detect_bbox'].average_time))
-        if i == 0:
-            logger.info(
-                ' \ Note: inference on the first image will be slower than the '
-                'rest (caches and auto-tuning need to warm up)'
-            )
+    logger.info('Inference time: {:.3f}s'.format(time.time() - t))
+    # for k, v in timers.items():
+    #     logger.info(' | {}: {:.3f}s'.format(k, v.average_time))
+    logger.info(' | bbox detection time: {:.3f}s'.format(timers['im_detect_bbox'].average_time))
 
-        # vis_utils.vis_one_image(
-        #     im[:, :, ::-1],  # BGR -> RGB for visualization
-        #     im_name,
-        #     # args.output_dir,
-	#     out_name,
-        #     cls_boxes,
-        #     cls_segms,
-        #     cls_keyps,
-        #     dataset=dummy_coco_dataset,
-        #     box_alpha=0.3,
-        #     show_class=True,
-        #     thresh=0.7,
-        #     kp_thresh=2,
-	#     ext=args.output_ext
-        # )
-        print(im_name, vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True))
+    if visualize:
+    	if not dataset:
+             logger.error('Cannot visualize without dataset. Check code for errors')
+        vis_utils.vis_one_image(
+            im[:, :, ::-1],  # BGR -> RGB for visualization
+            image_path,
+            # args.output_dir,
+            out_name,
+            cls_boxes,
+            cls_segms,
+            cls_keyps,
+            dataset=dataset,
+            box_alpha=0.3,
+            show_class=True,
+            thresh=0.7,
+            kp_thresh=2,
+            ext=args.output_ext
+        )
+    print(image_path, vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True))
 
 
 if __name__ == '__main__':
     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])
     utils.logging.setup_logging(__name__)
     args = parse_args()
-    main(args)
+    # main(args)
+    model, dataset = prepare_inference_engine(args)
+    image_path = '/home/irm15006/Detectron/demo/pcd0162gray.jpg'
+    infer_bbox_for_image(image_path, args.output_dir, model, dataset, visualize=True)
