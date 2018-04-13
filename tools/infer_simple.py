@@ -85,6 +85,13 @@ def parse_args():
     parser.add_argument(
         'im_or_folder', help='image or folder of images', default=None
     )
+    parser.add_argument(
+        '--output-ext',
+        dest='output_ext',
+        help='extension of output file (default: png)',
+        default='png',
+        type=str
+    )
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)
@@ -106,8 +113,10 @@ def main(args):
         im_list = [args.im_or_folder]
 
     for i, im_name in enumerate(im_list):
+
+        outfile_name = os.path.splitext(im_name)[0]
         out_name = os.path.join(
-            args.output_dir, '{}'.format(os.path.basename(im_name) + '.pdf')
+            args.output_dir, '{}.{}'.format(os.path.basename(outfile_name), args.output_ext)
         )
         logger.info('Processing {} -> {}'.format(im_name, out_name))
         im = cv2.imread(im_name)
@@ -126,10 +135,11 @@ def main(args):
                 'rest (caches and auto-tuning need to warm up)'
             )
 
+	logger.info('Output goes to {}'.format(out_name))
         vis_utils.vis_one_image(
             im[:, :, ::-1],  # BGR -> RGB for visualization
             im_name,
-            args.output_dir,
+            out_name,
             cls_boxes,
             cls_segms,
             cls_keyps,
@@ -137,7 +147,8 @@ def main(args):
             box_alpha=0.3,
             show_class=True,
             thresh=0.7,
-            kp_thresh=2
+            kp_thresh=2,
+	    ext='png'
         )
 
 
