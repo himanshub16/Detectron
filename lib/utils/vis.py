@@ -387,3 +387,38 @@ def vis_one_image(
     output_name = os.path.basename(im_name) + '.' + ext
     fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
     plt.close('all')
+
+
+def get_final_bounding_boxes(boxes, thresh=0.9, get_class=True, dataset=None):
+    '''Filters and returns appropriate bounding boxes with class labels'''
+    if isinstance(boxes, list):
+        boxes, _, _, classes = convert_from_cls_format(
+            boxes, None, None)
+
+    if boxes is None or boxes.shape[0] == 0 or max(boxes[:, 4]) < thresh:
+        return None
+
+    # Display in largest to smallest order to reduce occlusion
+    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    sorted_inds = np.argsort(-areas)
+
+    bboxes = []
+
+    for i in sorted_inds:
+        bbox = boxes[i, :4]
+        score = boxes[i, -1]
+        if score < thresh:
+            continue
+
+        x0, y0, w, h = \
+      	    bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+        if get_class:
+            class_str = get_class_string(classes[i], score, dataset)
+        else:
+            class_str = None
+       
+        bbox_info = {'bbox': (x0, y0, w, h), 'class_str': class_str} 
+        bboxes.append(bbox_info)
+        
+    return bboxes
