@@ -249,12 +249,15 @@ def vis_one_image_opencv(
 
 
 def vis_one_image(
-        im, im_name, output_dir, boxes, segms=None, keypoints=None, thresh=0.9,
+        im, im_name, output_file, boxes, segms=None, keypoints=None, thresh=0.9,
         kp_thresh=2, dpi=200, box_alpha=0.0, dataset=None, show_class=False,
-        ext='pdf'):
+        ext='png'):
     """Visual debugging of detections."""
+    output_dir = os.path.dirname(output_file)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+ 
+    print('saving image at', output_file, 'which is at', output_dir)
 
     if isinstance(boxes, list):
         boxes, segms, keypoints, classes = convert_from_cls_format(
@@ -384,8 +387,9 @@ def vis_one_image(
                     line, color=colors[len(kp_lines) + 1], linewidth=1.0,
                     alpha=0.7)
 
-    output_name = os.path.basename(im_name) + '.' + ext
-    fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
+    # output_name = os.path.basename(im_name) + '.' + ext
+    print('fig saving at', output_file)
+    fig.savefig(output_file, dpi=dpi)
     plt.close('all')
 
 
