@@ -400,7 +400,7 @@ def get_final_bounding_boxes(boxes, thresh=0.9, get_class=True, dataset=None):
             boxes, None, None)
 
     if boxes is None or boxes.shape[0] == 0 or max(boxes[:, 4]) < thresh:
-        return None
+        return {'bbox': [], 'class_str': ''}
 
     # Display in largest to smallest order to reduce occlusion
     areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
@@ -415,14 +415,14 @@ def get_final_bounding_boxes(boxes, thresh=0.9, get_class=True, dataset=None):
             continue
 
         x0, y0, w, h = \
-      	    bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]
+      	    int(bbox[0]), int(bbox[1]), int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1])
 
         if get_class:
             class_str = get_class_string(classes[i], score, dataset)
         else:
-            class_str = None
+            class_str = 'not asked'
        
-        bbox_info = {'bbox': (x0, y0, w, h), 'class_str': class_str} 
+        bbox_info = {'bbox': [x0, y0, w, h], 'class_str': class_str} 
         bboxes.append(bbox_info)
         
     return bboxes
