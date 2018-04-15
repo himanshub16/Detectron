@@ -93,20 +93,6 @@ def parse_args():
         type=str
     )
     parser.add_argument(
-        '--port',
-        dest='port',
-        help='port to run the flask server on',
-        default=8000,
-        type=int
-    )
-    parser.add_argument(
-        '--visualize',
-        dest='visualize',
-        help='should detectron visualize bounding boxes',
-        default=False,
-        type=bool
-    )
-    parser.add_argument(
         'im_or_folder', help='image or folder of images', default=None
     )
     if len(sys.argv) == 1:
@@ -161,43 +147,8 @@ def infer_bbox_for_image(image_path, output_dir, model, dataset=None, visualize=
             kp_thresh=2,
             ext=args.output_ext
         )
-    # print(image_path, vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True))
-    bounding_boxes = vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True)
-    return bounding_boxes
+    print(image_path, vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True))
 
-
-def prepare_flask_app(model, dataset, visualize=True):
-    from flask import Flask, request, jsonify, redirect
-    from uuid import uuid4 as uuid
-    app = Flask(__name__)
-   
-    @app.route('/getbbox', methods=['GET', 'POST'])
-    def getbbox():
-        if request.method == 'POST':
-	    if 'file' not in request.files:
-	        return redirect(request.url)
-	    file = request.files['file']
-            if file.filename == '':
-	        return redirect(request.url)
-	    if file:
-	        target_file = '/tmp/'+uuid().hex+'.jpg'
-	        output_dir = '/tmp/'
-	        file.save(target_file)
-		bboxes = infer_bbox_for_image(target_file, output_dir,
-			model, dataset, visualize=True)
-		print('detected', bboxes)
-		return jsonify(list(bboxes))
-	
-	return '''
-	<title>Upload new file </title>
-	<h1>Upload new file</h1>
-	<form method=post enctype=multipart/form-data>
-	    <p><input type=file name=file>
-	    <input type=submit value=Upload>
-	</form>
-	'''
-
-    return app
 
 if __name__ == '__main__':
     workspace.GlobalInit(['caffe2', '--caffe2_log_level=0'])
@@ -206,8 +157,4 @@ if __name__ == '__main__':
     # main(args)
     model, dataset = prepare_inference_engine(args)
     image_path = '/home/irm15006/Detectron/demo/pcd0162gray.jpg'
-    #infer_bbox_for_image(image_path, args.output_dir, model, dataset, visualize=True)
-
-    flask_app = prepare_flask_app(model, dataset, args.visualize)
-    print('starting flask app on port', args.port)
-    flask_app.run(host="0.0.0.0", port=args.port, debug=True)
+    infer_bbox_for_image(image_path, args.output_dir, model, dataset, visualize=True)
