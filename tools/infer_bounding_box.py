@@ -125,7 +125,7 @@ def prepare_inference_engine(args):
     return model, dummy_coco_dataset
 
 
-def infer_bbox_for_image(image_path, output_dir, model, dataset=None, visualize=False):
+def infer_bbox_for_image(image_path, output_dir, model, dataset, visualize=False):
     outfile_name = os.path.splitext(image_path)[0]
     out_name = os.path.join(
         output_dir, '{}.{}'.format(os.path.basename(outfile_name), args.output_ext)
@@ -162,7 +162,7 @@ def infer_bbox_for_image(image_path, output_dir, model, dataset=None, visualize=
             ext=args.output_ext
         )
     # print(image_path, vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True))
-    bounding_boxes = vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True)
+    bounding_boxes = vis_utils.get_final_bounding_boxes(cls_boxes, thresh=0.7, get_class=True, dataset=dataset)
     return bounding_boxes
 
 
